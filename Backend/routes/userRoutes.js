@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const validator =require("validator");
+const bcrypt = require("bcrypt");
 const User = require("../models/user");
 
 // -------------------- SIGNUP --------------------
@@ -15,9 +17,39 @@ router.post("/signup", async (req, res) => {
       });
     }
 
-    const user = new User(req.body);
-    await user.save();
+    const {name,email,password} =req.body;
 
+    if(!validator.isEmail(email)){
+      return res.status(400).json({message:"Invalid Email format"})
+    }
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 8 characters long" });
+    }
+    if (!/[A-Z]/.test(password)) {
+      return res.status(400).json({
+        message: "Password must include at least one uppercase letter",
+      });
+    }
+    if (!/[a-z]/.test(password)) {
+      return res.status(400).json({
+        message: "Password must include at least one lowercase letter",
+      });
+    }
+    if (!/\d/.test(password)) {
+      return res
+        .status(400)
+        .json({ message: "Password must include at least one number" });
+    }
+    if (!/[@$!%*?&]/.test(password)) {
+      return res.status(400).json({
+        message: "Password must include at least one special character",
+      });
+    }
+
+    const hashpassword =await bcrypt.hash(password,10);
+    const user=await User.create({name,email,password:hashpassword});
     return res.json({
       success: true,
       user: {
@@ -53,26 +85,27 @@ router.post("/login", async (req, res) => {
     }
 
     // 2. Check password
-    if (user.password !== password) {
-      return res.json({
-        success: false,
-        message: "Incorrect password",
-      });
-    }
+    const pass =await bcrypt.compare(password,user.password)
+if(!pass){
+  res.status(401).json("invalid password")
+}
+ const token = jwt.sign({ userId: user._id }, process.env.JWT_TOKEN, { expiresIn: "7d" })
+        res.cookie("access_token", token, cookieOptions)
+        res.status(200).json({message:"login successful", token, user })
 
     // 3. SUCCESS → return SAME exact user always
-    return res.json({
-      success: true,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        address: user.address,
-        region: user.region,
-        pincode: user.pincode
-      }
-    });
+    // return res.json({
+    //   success: true,
+    //   user: {
+    //     _id: user._id,
+    //     name: user.name,
+    //     email: user.email,
+    //     phone: user.phone,
+    //     address: user.address,
+    //     region: user.region,
+    //     pincode: user.pincode
+    //   }
+    // });
 
   } catch (error) {
     console.log(error);

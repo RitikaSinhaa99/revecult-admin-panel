@@ -39,4 +39,43 @@ router.get("/products", adminAuth, async (req, res) => {
   res.json(products);
 });
 
+// CREATE PRODUCT
+router.post("/products", adminAuth, async (req, res) => {
+  try {
+    const { name, price, description, category, image, stock } = req.body;
+    const newProduct = new Product({
+      name,
+      price,
+      description,
+      category,
+      image,
+      stock
+    });
+    await newProduct.save();
+    res.status(201).json(newProduct);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// UPDATE PRODUCT
+router.put("/products/:id", adminAuth, async (req, res) => {
+  try {
+    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(product);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DELETE PRODUCT
+router.delete("/products/:id", adminAuth, async (req, res) => {
+  try {
+    await Product.findByIdAndDelete(req.params.id);
+    res.json({ message: "Product deleted" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 module.exports = router;
