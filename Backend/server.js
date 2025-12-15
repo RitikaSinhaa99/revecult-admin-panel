@@ -1,23 +1,49 @@
-const express = require('express');
-const cors = require('cors');
-const mongoose = require('mongoose');
+import express from 'express';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import cookieParser from 'cookie-parser';
+import dotenv from 'dotenv';
 
-const userRoutes = require('./routes/userRoutes'); // correct name
+import userRoutes from './routes/userRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import productRoutes from './routes/productRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import reviewRouter from './routes/reviewRouter.js';
+import authRoutes from './routes/authRouter.js';
+import paymentRoutes from './routes/paymentRouter.js';
+import feedbackRouter from './routes/feedbackRouter.js';
+
+dotenv.config();
 
 const app = express();
-//added admin routes to access
-const adminRoutes = require("./routes/adminRoutes");
-app.use("/api/admin", adminRoutes);
 
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 app.use('/api/user', userRoutes);
+app.use('/api/reviews', reviewRouter);
+app.use('/api/products', productRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/feedback', feedbackRouter);
 
-mongoose.connect("mongodb://127.0.0.1:27017/mydb")
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err));
+const MONGO = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/mydb';
+mongoose
+  .connect(MONGO)
+  .then(() => console.log('MongoDB Connected'))
+  .catch((err) => console.log(err));
 
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
-});
+const PORT = process.env.PORT || 5000;
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+export default app;

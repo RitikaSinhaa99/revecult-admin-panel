@@ -1,43 +1,36 @@
-import jwt from 'jsonwebtoken'
-import User from '../models/user.js';
-import dotenv from "dotenv";
-dotenv.config();
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import User from '../models/userModel.js';
 
-const auth = async (req,res,next) => {
-    try {
-        console.log("auth middleware");
-console.log(req.cookies);
+const router = express.Router();
 
-        
-        const token = req.cookies.access_token || req.headers.authorization && req.headers.authorization.split(" ")[1];
-        if (!token) {
-            return res.status(401).json({
-                message: "No token access"
-            });
-        }
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
 
-        const decoded = jwt.verify(token, process.env.JWT_TOKEN);
-        if(!decoded){
-            return res.status(401).json("invalid token")
-        }
-         const user = await User.findById(decoded.userId).select('-password')
-       if(!user){
-        return res.status(400).json("user not found")
-       }
-       console.log(user);
-       
-       req.user=user;
-         next();
-                  
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).send('User not found');
 
-    } catch (error) {
-        console.log("auth.js page",error);
-        
-        res.status(401).json({
-            message: "Unauthorized access"
-        });
-    }
-    
-}
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).send('Wrong password');
 
-export default auth;
+    // JWT token mein role bhi add karo
+    const token = jwt.sign(
+      { id: user._id, role: user.role }, // <-- role include kiya
+      process.env.JWT_SECRET || 'secret123',
+      { expiresIn: '30d' }
+    );
+
+    res.send({
+      token,
+      role: user.role,
+      message: user.role === 'admin' ? 'Go to admin dashboard' : 'Go to user dashboard'
+    });
+  } catch (err) {
+    res.status(500).send('Server error');
+  }
+});
+
+export default router;
+// ✅ Correct

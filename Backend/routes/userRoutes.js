@@ -1,8 +1,14 @@
-const express = require("express");
+import express from "express";
+import validator from "validator";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import User from "../models/userModel.js";
+
+dotenv.config();
+
 const router = express.Router();
-const validator =require("validator");
-const bcrypt = require("bcrypt");
-const User = require("../models/user");
+const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' };
 
 // -------------------- SIGNUP --------------------
 router.post("/signup", async (req, res) => {
@@ -78,20 +84,29 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.json({
-        success: false,
-        message: "User not found",
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     // 2. Check password
-    const pass =await bcrypt.compare(password,user.password)
-if(!pass){
-  res.status(401).json("invalid password")
-}
- const token = jwt.sign({ userId: user._id }, process.env.JWT_TOKEN, { expiresIn: "7d" })
-        res.cookie("access_token", token, cookieOptions)
-        res.status(200).json({message:"login successful", token, user })
+    const pass = await bcrypt.compare(password, user.password);
+    if (!pass) {
+      return res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_TOKEN, { expiresIn: '7d' });
+    res.cookie('access_token', token, cookieOptions);
+
+    const safeUser = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      address: user.address,
+      region: user.region,
+      pincode: user.pincode,
+    };
+
+    return res.status(200).json({ message: 'login successful', token, user: safeUser });
 
     // 3. SUCCESS → return SAME exact user always
     // return res.json({
@@ -145,4 +160,4 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
